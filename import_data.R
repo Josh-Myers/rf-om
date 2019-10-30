@@ -216,59 +216,128 @@ followed_up$exit_study = ifelse(!is.na(followed_up$`24.date.ques.complete`), '24
          
 summary(as.factor(followed_up$exit_study)) # 124 stayed right to the end                         
 
-# survive
-surv_df = select(followed_up, c(id, tymp_6, tymp_12, tymp_18, gender, type.of.feed.0))
+# create features and discard unneeded variables
+# parent smokes
+followed_up$parent_smoke = ifelse(followed_up$mum_smoke_q24 %in% c('yes', 'Yes') | followed_up$dad_smoke_q24 %in% c('yes', 'Yes')
+                                   | followed_up$mum_smoke_q12 %in% c('yes', 'Yes') | followed_up$dad_smoke_q12 %in% c('yes', 'Yes'),
+                                  'yes', ifelse(is.na(followed_up$mum_smoke_q24) %in% c('no', 'No') | followed_up$dad_smoke_q24 %in% c('nO', 'no', 'No')
+                                                | followed_up$mum_smoke_q12 %in% c('`No', 'No', 'no') | followed_up$dad_smoke_q12 %in% c('no', 'No'), 
+                                                'no', 'unknown'))
+followed_up$parent_smoke = as.factor(followed_up$parent_smoke)
+
+# type of feed at birth (6 na, impute as breast)
+followed_up$feed_birth = ifelse(followed_up$type.of.feed.0 %in% c('B', 'breast', 'Breast'), 'breast',
+                                ifelse(followed_up$type.of.feed.0 %in% c('both', 'Both'), 'mixed', 
+                                       ifelse(followed_up$type.of.feed.0 %in% c('formula', 'Formula'), 'formula', 'breast')))
+followed_up$feed_birth = as.factor(followed_up$feed_birth)
+
+# length of breast feeding
+
+# age entered daycare
+
+# survival analysis
+surv_ome = select(followed_up, c(id, tymp_6, tymp_12, tymp_18, gender, type.of.feed.0))
 # only include infants followed up
-surv_df <- surv_df[!(is.na(surv_df$tymp_6)) | !(is.na(surv_df$tymp_12)) | !(is.na(surv_df$tymp_18)),]
+surv_ome <- surv_ome[!(is.na(surv_ome$tymp_6)) | !(is.na(surv_ome$tymp_12)) | !(is.na(surv_ome$tymp_18)),]
 
 # these data are interval censored https://www.r-project.org/conferences/useR-2010/tutorials/Fay_1.pdf
- 
+# Need to have 2 models because different intervals
+# ome model 6, 12, 18 - censored = 0
+# aom model 12, 24 - censored = 0, and have a covariate with number of episodes
+
 # I have some interval censored - solution is to put 0 if right or interval censored, if not censored and normal remove that row
 # https://stats.stackexchange.com/questions/383713/survival-analysis-with-recurrent-events-with-subjects-that-move-in-and-out-of-ri
 # set censored to 0 and then rm na after in long form
 # set to 0 (censored) if seen at 12 months, but NA at 6mths (interval censoring)
 # 1. OME model
-# add censoring
-# if 12=0 and 18=NA, 18=0 (seen at 12 months but not at 18- so 18 is censored)
-surv_df$tymp_18 = ifelse(surv_df$tymp_12==0 & is.na(surv_df$tymp_18), 0, surv_df$tymp_18)
+# add censoring, eg if 6,12,18 all na, 6 should be censored 
+# if 12!=NA and 18=NA, 18 should be censored (seen at 12 months but not at 18)
+# make censoring 2 at first, because 0 was normal, then set 0 to NA, then 2 to 0
 
-# if 6=0 and 12&18=NA, 12=0
-surv_df$tymp_12 = ifelse(surv_df$tymp_6==0 & is.na(surv_df$tymp_12) & is.na(surv_df$tymp_18), 0, surv_df$tymp_12)
+# set 6 to censored if missing 6 and 12
+surv_ome$tymp_6 = ifelse(is.na(surv_ome$tymp_6) & is.na(surv_ome$tymp_12), 2, surv_ome$tymp_6)
 
-# if 12=NA and 6=NA, 6=0
-surv_df$tymp_6 = ifelse(!is.na(surv_df$tymp_12) & is.na(surv_df$tymp_6), 0, surv_df$tymp_6)
+# set 6 to censored if attended 12 but not 6
+surv_ome$tymp_6 = ifelse(is.na(surv_ome$tymp_6) & surv_ome$tymp_12 %in% c(0,1), 2, surv_ome$tymp_6)
 
-# if 6=1 and 12&18=NA, 12=0
-surv_df$tymp_12 = ifelse(surv_df$tymp_6==1 & is.na(surv_df$tymp_12) & is.na(surv_df$tymp_18), 0, surv_df$tymp_12)
+# set 12 to censored if attended 6 (0 or 1) but not 12 or 18
+surv_ome$tymp_12 = ifelse(surv_ome$tymp_6 %in% c(0,1) & is.na(surv_ome$tymp_12) & is.na(surv_ome$tymp_18), 2, surv_ome$tymp_12)
 
-# if 18!=NA & 12=NA, 12=0 (interval censored - they attended at 18 but not 12, so 12=0 for censored)
-surv_df$tymp_12 = ifelse(!is.na(surv_df$tymp_18) & is.na(surv_df$tymp_12), 0, surv_df$tymp_12)
+# set 12 to censored if attended 18 but 12 is missing and attended 6
+surv_ome$tymp_12 = ifelse(surv_ome$tymp_18 %in% c(0,1) & is.na(surv_ome$tymp_12) & surv_ome$tymp_6 %in% c(0,1), 2, surv_ome$tymp_12)
 
-# if 12=1 and 18!=NA, 18=0 (seen at 12 but not 18 so 18 needs to be censored)
-surv_df$tymp_18 = ifelse(surv_df$tymp_12==1 & is.na(surv_df$tymp_18), 0, surv_df$tymp_18)
+# set 18 to censored if attended 12 but not 18 (censored at 18)
+surv_ome$tymp_18 = ifelse(surv_ome$tymp_12 %in% c(0,1) & is.na(surv_ome$tymp_18), 2, surv_ome$tymp_18)
 
-surv_long = pivot_longer(surv_df, cols = starts_with('tymp'))
+# make long
+surv_ome_long = pivot_longer(surv_ome, cols = starts_with('tymp'))
+surv_ome_long$start=0
+surv_ome_long = select(surv_ome_long, c(id, start, name, value, gender, type.of.feed.0))
+colnames(surv_ome_long) = c('id', 'start', 'stop', 'event', 'gender', 'type.of.feed.0')
 
-surv_long$start=0
-surv_long = select(surv_long, c(id, start, name, value, gender, type.of.feed.0))
-colnames(surv_long) = c('id', 'start', 'stop', 'event', 'gender', 'type.of.feed.0')
+surv_ome_long$stop = ifelse(surv_ome_long$stop == 'tymp_6', '6',
+                        ifelse(surv_ome_long$stop == 'tymp_12', '12', 
+                               ifelse(surv_ome_long$stop == 'tymp_18', '18', NA)))
 
-surv_long$stop = ifelse(surv_long$stop == 'tymp_6', '6',
-                        ifelse(surv_long$stop == 'tymp_12', '12', 
-                               ifelse(surv_long$stop == 'tymp_18', '18', NA)))
+surv_ome_long$start = ifelse(surv_ome_long$stop == '6', '0',
+                         ifelse(surv_ome_long$stop == '12', '6', 
+                                ifelse(surv_ome_long$stop == '18', '12', NA)))
 
-surv_long$start = ifelse(surv_long$stop == '6', '0',
-                         ifelse(surv_long$stop == '12', '6', 
-                                ifelse(surv_long$stop == '18', '12', NA)))
+# now set 0 to NA
+surv_ome_long$event = ifelse(surv_ome_long$event == 0, NA, surv_ome_long$event)
 
-surv_long = surv_long[complete.cases(surv_long$event),]
+# then 2 to 0 (0 is censored)
+surv_ome_long$event = ifelse(surv_ome_long$event == 2, 0, surv_ome_long$event)
+
+# then na.rm
+surv_ome_long = surv_ome_long[complete.cases(surv_ome_long$event),]
 
 # 2 AOM model
+surv_aom = select(followed_up, c(id, num_om_0_to_1, num_om_1_to_2, gender, type.of.feed.0))
+# only include infants followed up
+surv_aom <- surv_aom[!(is.na(surv_aom$num_om_0_to_1)) | !(is.na(surv_aom$num_om_1_to_2)),]
+colnames(surv_aom) = c('id', 'year_1', 'year_2', 'gender', 'type.of.feed.0')
 
-# Need to have 2 models because different intervals
-# ome model 6, 12, 18 - censored = 0
-# aom model 12, 24 - censored = 0, and have a covariate with number of episodes
+# set censoring to 'c', then 0 to na, then c to 0
+# if 24mth not missing, and 12 is missing, 12 is censored
+surv_aom$year_1 = ifelse(!is.na(surv_aom$year_2) & is.na(surv_aom$year_1), 'c', surv_aom$year_1)
+# if both normal, 24 is censored
+surv_aom$year_2 = ifelse(surv_aom$year_1==0 & surv_aom$year_2==0, 'c', surv_aom$year_2)
+# if both missing, 12 is censored
+surv_aom$year_1 = ifelse(is.na(surv_aom$year_1) & is.na(surv_aom$year_2), 'c', surv_aom$year_1)
+# if 12mth is normal and 24mth missing, 12 mth is censored
+surv_aom$year_1 = ifelse(is.na(surv_aom$year_2) & !is.na(surv_aom$year_1), 'c', surv_aom$year_1)
+# if 24mth is normal, is censored
+surv_aom$year_2 = ifelse(surv_aom$year_2==0, 'c', surv_aom$year_2)
 
-summary(as.factor(followed_up$exit_study))
+surv_aom_long = pivot_longer(surv_aom, cols = starts_with('year'))
+surv_aom_long$start=0
+
+surv_aom_long = select(surv_aom_long, c(id, start, name, value, gender, type.of.feed.0))
+colnames(surv_aom_long) = c('id', 'start', 'stop', 'event', 'gender', 'type.of.feed.0')
+surv_aom_long$num_infect = surv_aom_long$event
+surv_aom_long$num_infect = ifelse(surv_aom_long$num_infect=='c', 0, surv_aom_long$num_infect) # will need to impute missing
+
+# now set >0 to 1, 0=NA, c=0 
+# then remove NA rows (no event or censoring)
+surv_aom_long$event = ifelse(surv_aom_long$event==0, NA, 
+                             ifelse(surv_aom_long$event =='c', 0,
+                                    ifelse(surv_aom_long$event >0, 1, NA)))
+
+surv_aom_long$stop = ifelse(surv_aom_long$stop=='year_1', '12',
+                            ifelse(surv_aom_long$stop=='year_2', '24', NA))
+
+surv_aom_long$start = ifelse(surv_aom_long$stop == '12', '0',
+                             ifelse(surv_aom_long$stop=='24', '12', NA))
+
+surv_aom_long = surv_aom_long[complete.cases(surv_aom_long$event), ]
+surv_aom_long$event = as.numeric(surv_aom_long$event)
+
+
+
+
+
+
+
 
 
