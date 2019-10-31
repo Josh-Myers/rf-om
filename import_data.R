@@ -115,26 +115,26 @@ tymp = left_join(id, tymp)
 
 quest_12 = read_xlsx("Questionnaires.xlsx", sheet=1, na=c(NA, "", "NFA", "NA"),
                      col_types = c(n,  s,  s,  s,  s,  s,  n,  n,  t, s, s, s, s, s, t, 
-                                 n, n, t, n, n, n, s, s, t, t, n, n, n, s, s, 
-                                 s, s, s, s, n, s, s, s, s, s, n, n, s, s, n,
-                                 t, s, t, t, t, t, t, t, t, s))
+                                   n, n, t, n, n, n, s, s, t, t, n, n, n, s, s, 
+                                   s, s, s, s, n, s, s, s, s, s, n, n, t, s, n,
+                                   t, s, t, t, t, t, t, t, t, s))
 
 colnames(quest_12) = c('id', 'num_om_0_to_1', 'age_first_om_q12', 'saw_gp_q12', 'use_dummy_q12', 'start_dummy_q12', 'stop_dummy_q12',
                        'feed_q12', 'age_breast_start_q12', 'age_breast_stop_q12', 'age_formula_start_q12', 'day_care_q12', 'type_care_q12', 
                        'num_kids_in_group_q12', 'num_days_per_week_q12', 'age_start_care_q12', "num_urti_q12", 'num_people_at_home_q12', 
-                       'num_siblings_at_home_q12', "num_sibs_under_5_q12", 'parent_hx_om_q12', 'mum_edu_q12', 'dad_edu_q12', 'income_q12', 
+                       'num_siblings_at_home_q12', 'sib_om_hx_12', "num_sibs_under_5_q12", 'parent_hx_om_q12', 'mum_edu_q12', 'dad_edu_q12', 'income_q12', 
                        'mum_smoke_q12', 'num_cig_mum_q12', 'dad_smoke_q12', 'num_cig_dad_q12')
 
 quest_24 = read_xlsx("Questionnaires.xlsx", sheet=2, na=c(NA, "", "NFA", "NA"),
                      col_types = c(n,  s,  s,  s,  s,  s,  n,  n,  t, s, s, s, s, s, t, 
-                     n, n, t, n, n, n, s, s, t, t, n, n, n, s, s, 
-                     s, s, s, s, n, s, s, s, s, s, n, n, s, s, n,
-                     t, s, t, t, t, t, t, t, t, s, s))
+                                   n, n, t, n, n, n, s, s, t, t, n, n, n, s, s, 
+                                   s, s, s, s, n, s, s, s, s, s, n, n, t, s, n,
+                                   t, s, t, t, t, t, t, t, t, s, s))
 
 colnames(quest_24) = c('id', 'num_om_1_to_2', 'age_first_om_q24', 'saw_gp_q24', 'use_dummy_q24', 'start_dummy_q24', 'stop_dummy_q24',
                        'feed_q24', 'age_breast_start_q24', 'age_breast_stop_q24', 'age_formula_start_q24', 'day_care_q24', 'type_care_q24', 
                        'num_kids_in_group_q24', 'num_days_per_week_q24', 'age_start_care_q24', 'num_urti_q24', 'num_people_at_home_q24', 
-                       'num_siblings_at_home_q24', "num_sibs_under_5_q24", 'parent_hx_om_q24', 'mum_edu_q24', 'dad_edu_q24', 'income_q24', 
+                       'num_siblings_at_home_q24', 'sib_om_hx_24', "num_sibs_under_5_q24", 'parent_hx_om_q24', 'mum_edu_q24', 'dad_edu_q24', 'income_q24', 
                        'mum_smoke_q24', 'num_cig_mum_q24', 'dad_smoke_q24', 'num_cig_dad_q24')
 
 
@@ -216,29 +216,121 @@ followed_up$exit_study = ifelse(!is.na(followed_up$`24.date.ques.complete`), '24
          
 summary(as.factor(followed_up$exit_study)) # 124 stayed right to the end                         
 
-# create features and discard unneeded variables
-# parent smokes
-followed_up$parent_smoke = ifelse(followed_up$mum_smoke_q24 %in% c('yes', 'Yes') | followed_up$dad_smoke_q24 %in% c('yes', 'Yes')
-                                   | followed_up$mum_smoke_q12 %in% c('yes', 'Yes') | followed_up$dad_smoke_q12 %in% c('yes', 'Yes'),
-                                  'yes', ifelse(is.na(followed_up$mum_smoke_q24) %in% c('no', 'No') | followed_up$dad_smoke_q24 %in% c('nO', 'no', 'No')
-                                                | followed_up$mum_smoke_q12 %in% c('`No', 'No', 'no') | followed_up$dad_smoke_q12 %in% c('no', 'No'), 
-                                                'no', 'unknown'))
-followed_up$parent_smoke = as.factor(followed_up$parent_smoke)
-
-# type of feed at birth (6 na, impute as breast)
-followed_up$feed_birth = ifelse(followed_up$type.of.feed.0 %in% c('B', 'breast', 'Breast'), 'breast',
-                                ifelse(followed_up$type.of.feed.0 %in% c('both', 'Both'), 'mixed', 
-                                       ifelse(followed_up$type.of.feed.0 %in% c('formula', 'Formula'), 'formula', 'breast')))
-followed_up$feed_birth = as.factor(followed_up$feed_birth)
-
-# length of breast feeding
-
-# age entered daycare
-
 # survival analysis
-surv_ome = select(followed_up, c(id, tymp_6, tymp_12, tymp_18, gender, type.of.feed.0))
+# 1. OME
+ome_df = select(followed_up, id, tymp_6, tymp_12, tymp_18, wai_pred_neonate, gender, type.of.birth, birth.weight, body.length,
+                  head.circum)
+
+ome_df$parent_smoke = ifelse(followed_up$mum_smoke_q24 %in% c('yes', 'Yes') | followed_up$dad_smoke_q24 %in% c('yes', 'Yes')
+                               | followed_up$mum_smoke_q12 %in% c('yes', 'Yes') | followed_up$dad_smoke_q12 %in% c('yes', 'Yes'),
+                               'yes', ifelse(is.na(followed_up$mum_smoke_q24) %in% c('no', 'No') | followed_up$dad_smoke_q24 %in% c('nO', 'no', 'No')
+                                             | followed_up$mum_smoke_q12 %in% c('`No', 'No', 'no') | followed_up$dad_smoke_q12 %in% c('no', 'No'), 
+                                             'no', 'unknown'))
+ome_df$parent_smoke = as.factor(ome_df$parent_smoke)
+
+ome_df$feed_birth = ifelse(followed_up$type.of.feed.0 %in% c('B', 'breast', 'Breast'), 'breast',
+                             ifelse(followed_up$type.of.feed.0 %in% c('both', 'Both'), 'mixed', 
+                                    ifelse(followed_up$type.of.feed.0 %in% c('formula', 'Formula'), 'formula', 'breast')))
+ome_df$feed_birth = as.factor(ome_df$feed_birth)
+
+ome_df$dummy_birth = ifelse(followed_up$using.pacifier.0 %in% c('Yes'), 'Yes', 'No') # 7 na impute as no
+
+# the feed, urti, dummy 6, 12, 18 vars are time varying and need to be consolidated after changing to long form
+ome_df$feed_6 = ifelse(followed_up$type.of.feed.6 %in% c('breast', 'Breast'), 'Breast',
+                       ifelse(followed_up$type.of.feed.6 %in% c('formula', 'bottle'), 'Formula',
+                              ifelse(followed_up$type.of.feed.6 %in% c('both', "Both", "Cow's Milk", 'mixed'), 'Mixed/Other', NA))) # other is cow milk n=1
+
+ome_df$feed_12 = ifelse(followed_up$type.of.feed.12 %in% c('breast', 'Breast'), 'Breast',
+                        ifelse(followed_up$type.of.feed.12 %in% c('formula', 'Formula'), 'Formula',
+                               ifelse(followed_up$type.of.feed.12 %in% c('both', 'Both', 'Mixed', 'cow', "Cow's milk", "cow's milk",
+                                                                         'mixed', 'Neither', 'nil', 'Nil', 'other', 'solid', 'Solid'), "Mixed/Other", NA)))
+
+ome_df$feed_18 = ifelse(followed_up$type.of.feed.18 %in% c('breast', "Breast"), 'Breast',
+                        ifelse(followed_up$type.of.feed.18 %in% c('formula', 'Formula'), 'Formula',
+                               ifelse(followed_up$type.of.feed.18 %in% c('both', "breast & cow's milk", 'cow', "Cow's milk", 'mixed',
+                                                                         'Na', 'nil', 'other', 'Solid'), 'Mixed/Other', NA)))
+
+ome_df$urti_6 = ifelse(followed_up$cold.or.flu.6 %in% c('yes', "Yes"), "Yes",
+                       ifelse(followed_up$cold.or.flu.6 %in% c('Na', 'no', 'No'), 'No', NA))
+
+ome_df$urti_12 = ifelse(followed_up$cold.or.flu.12 %in% c('yes', 'Yes'), "Yes",
+                        ifelse(followed_up$cold.or.flu.12 %in% c('no', 'No'), 'No', NA))
+
+ome_df$urti_18 = ifelse(followed_up$cold.or.flu.18 %in% c('yes', "Yes"), "Yes",
+                        ifelse(followed_up$cold.or.flu.18 %in% c('no', "No"), "No", NA))
+
+ome_df$dummy_6 = ifelse(followed_up$using.pacifier.6 %in% c('Yes', 'yes'), "Yes",
+                        ifelse(followed_up$using.pacifier.6 %in% c('no', 'No'), "No", NA))
+
+ome_df$dummy_12 = ifelse(followed_up$using.pacifier.12 %in% c('Yes', 'yes'), "Yes", 
+                         ifelse(followed_up$using.pacifier.12 %in% c('no', "No"), 'No', NA))
+
+ome_df$dummy_18 = ifelse(followed_up$using.pacifier.18 %in% c('yes', 'Yes'), "Yes",
+                         ifelse(followed_up$using.pacifier.18 %in% c('Na', 'no', "No"), 'No', NA))
+
+# daycare
+# create daycare yes/no to use in start daycare (months) variable 
+followed_up$daycare = ifelse(followed_up$day_care_q12 %in% c('yes', "Yes"), "Yes",
+                         ifelse(followed_up$day_care_q12 %in% c('no', "No"), "No",
+                                ifelse(followed_up$day_care_q24 %in% c('yes', 'Yes'), 'Yes',
+                                       ifelse(followed_up$day_care_q24 %in% c('no', "No"), 'No', NA))))
+
+ome_df$start_daycare = ifelse(!is.na(followed_up$age_start_care_q12), followed_up$age_start_care_q12,
+                              ifelse(!is.na(followed_up$age_start_care_q24), followed_up$age_start_care_q24,
+                                     ifelse(followed_up$daycare %in% 'No', 24, NA))) # if no haven't started daycare by 24 months
+
+ome_df$daycare_num_kids = ifelse(!is.na(followed_up$num_kids_in_group_q12), followed_up$num_kids_in_group_q12,
+                                 ifelse(!is.na(followed_up$num_kids_in_group_q24), followed_up$num_kids_in_group_q24,
+                                        ifelse(followed_up$daycare %in% 'No', 0, NA))) # will need to impute some of these
+
+ome_df$daycare_num_days = ifelse(!is.na(followed_up$num_days_per_week_q12), followed_up$num_days_per_week_q12,
+                                 ifelse(!is.na(followed_up$num_days_per_week_q24), followed_up$num_days_per_week_q24,
+                                        ifelse(followed_up$daycare %in% 'No', 0, NA)))
+
+ome_df$num_ppl_home = ifelse(!is.na(followed_up$num_people_at_home_q12), followed_up$num_people_at_home_q12,
+                             ifelse(!is.na(followed_up$num_people_at_home_q24), followed_up$num_people_at_home_q24, NA))
+
+ome_df$num_sibs = ifelse(!is.na(followed_up$num_siblings_at_home_q12), followed_up$num_siblings_at_home_q12,
+                         ifelse(!is.na(followed_up$num_siblings_at_home_q24), followed_up$num_siblings_at_home_q24, NA))
+
+ome_df$num_sibs_under5 = ifelse(!is.na(followed_up$num_sibs_under_5_q12), followed_up$num_sibs_under_5_q12,
+                                ifelse(!is.na(followed_up$num_sibs_under_5_q24), followed_up$num_sibs_under_5_q24, NA))
+  
+ome_df$income = ifelse(!is.na(followed_up$income_q12), followed_up$income_q12,
+                       ifelse(!is.na(followed_up$income_q24), followed_up$income_q24, NA))
+
+ome_df$fam_hx_om = ifelse(!is.na(followed_up$parent_hx_om_q12), followed_up$parent_hx_om_q12,
+                       ifelse(!is.na(followed_up$parent_hx_om_q24), followed_up$parent_hx_om_q24,
+                              ifelse(!is.na(followed_up$sib_om_hx_12), followed_up$sib_om_hx_12,
+                                     ifelse(!is.na(followed_up$sib_om_hx_24), followed_up$sib_om_hx_24, NA))))
+
+ome_df$mum_edu = ifelse(!is.na(followed_up$mum_edu_q12), followed_up$mum_edu_q12,
+                        ifelse(!is.na(followed_up$mum_edu_q24), followed_up$mum_edu_q24, NA))
+
+ome_df$dad_edu = ifelse(!is.na(followed_up$dad_edu_q12), followed_up$dad_edu_q12,
+                        ifelse(!is.na(followed_up$dad_edu_q24), followed_up$dad_edu_q24, NA))
+
+ome_df$age_first_om = ifelse(!is.na(followed_up$age_first_om_q12), followed_up$age_first_om_q12,
+                             ifelse(!is.na(followed_up$age_first_om_q24), followed_up$age_first_om_q24, NA))
+
+# # length of breast feeding (make time varying instead)
+# model_df$length_breast = ifelse(followed_up$type.of.feed.18 %in% c('both', 'breast', 'Breast', "breast & cow's milk"), '>18',
+#                                 ifelse(followed_up$type.of.feed.12 %in% c('both', 'Both', 'breast', "Breast"), ">12", 
+#                                        ifelse(followed_up$type.of.feed.6 %in% c('both', 'Both', 'mixed'), '>6',
+#                                               ifelse(followed_up$type.of.feed.0 %in% c('B', 'both', 'Both', 'breast', 'Breast'), '>0',
+#                                                      NA) )))
+# 
+# # or age formula introduced
+# model_df$formula_intro = ifelse(!is.na(followed_up$age_formula_start_q12), followed_up$age_formula_start_q12,
+#                                 ifelse(!is.na(followed_up$age_formula_start_q24), followed_up$age_formula_start_q24,
+#                                        ifelse(followed_up$type.of.feed.0 %in% c('both', 'Both', 'formula', "Formula"), 'birth',
+#                                               ifelse(followed_up$type.of.feed.6 %in% c('both', 'Both', 'bottle', 'formula', 'mixed'), '<6',
+#                                                      ifelse(followed_up$type.of.feed.12 %in% c('both', 'Both', 'formula', 'Formula', 'mixed'), '<12',
+#                                                             ifelse(followed_up$type.of.feed.18 %in% c('both', 'formula', 'Formula', 'mixed'), '<18',
+#                                                                    'breast')))))) # all with no formla info had breast info, therfore, likely to be exclusively breastfed
+
 # only include infants followed up
-surv_ome <- surv_ome[!(is.na(surv_ome$tymp_6)) | !(is.na(surv_ome$tymp_12)) | !(is.na(surv_ome$tymp_18)),]
+ome_df <- ome_df[!(is.na(ome_df$tymp_6)) | !(is.na(ome_df$tymp_12)) | !(is.na(ome_df$tymp_18)),]
 
 # these data are interval censored https://www.r-project.org/conferences/useR-2010/tutorials/Fay_1.pdf
 # Need to have 2 models because different intervals
@@ -255,44 +347,48 @@ surv_ome <- surv_ome[!(is.na(surv_ome$tymp_6)) | !(is.na(surv_ome$tymp_12)) | !(
 # make censoring 2 at first, because 0 was normal, then set 0 to NA, then 2 to 0
 
 # set 6 to censored if missing 6 and 12
-surv_ome$tymp_6 = ifelse(is.na(surv_ome$tymp_6) & is.na(surv_ome$tymp_12), 2, surv_ome$tymp_6)
+ome_df$tymp_6 = ifelse(is.na(ome_df$tymp_6) & is.na(ome_df$tymp_12), 2, ome_df$tymp_6)
 
 # set 6 to censored if attended 12 but not 6
-surv_ome$tymp_6 = ifelse(is.na(surv_ome$tymp_6) & surv_ome$tymp_12 %in% c(0,1), 2, surv_ome$tymp_6)
+ome_df$tymp_6 = ifelse(is.na(ome_df$tymp_6) & ome_df$tymp_12 %in% c(0,1), 2, ome_df$tymp_6)
 
 # set 12 to censored if attended 6 (0 or 1) but not 12 or 18
-surv_ome$tymp_12 = ifelse(surv_ome$tymp_6 %in% c(0,1) & is.na(surv_ome$tymp_12) & is.na(surv_ome$tymp_18), 2, surv_ome$tymp_12)
+ome_df$tymp_12 = ifelse(ome_df$tymp_6 %in% c(0,1) & is.na(ome_df$tymp_12) & is.na(ome_df$tymp_18), 2, ome_df$tymp_12)
 
 # set 12 to censored if attended 18 but 12 is missing and attended 6
-surv_ome$tymp_12 = ifelse(surv_ome$tymp_18 %in% c(0,1) & is.na(surv_ome$tymp_12) & surv_ome$tymp_6 %in% c(0,1), 2, surv_ome$tymp_12)
+ome_df$tymp_12 = ifelse(ome_df$tymp_18 %in% c(0,1) & is.na(ome_df$tymp_12) & ome_df$tymp_6 %in% c(0,1), 2, ome_df$tymp_12)
 
 # set 18 to censored if attended 12 but not 18 (censored at 18)
-surv_ome$tymp_18 = ifelse(surv_ome$tymp_12 %in% c(0,1) & is.na(surv_ome$tymp_18), 2, surv_ome$tymp_18)
+ome_df$tymp_18 = ifelse(ome_df$tymp_12 %in% c(0,1) & is.na(ome_df$tymp_18), 2, ome_df$tymp_18)
 
 # make long
-surv_ome_long = pivot_longer(surv_ome, cols = starts_with('tymp'))
-surv_ome_long$start=0
-surv_ome_long = select(surv_ome_long, c(id, start, name, value, gender, type.of.feed.0))
-colnames(surv_ome_long) = c('id', 'start', 'stop', 'event', 'gender', 'type.of.feed.0')
+ome_df_long = pivot_longer(ome_df, cols = starts_with('tymp'))
+ome_df_long$start=0
+ome_df_long = select(ome_df_long, c(id, start, name, value, gender, type.of.feed.0))
+colnames(ome_df_long) = c('id', 'start', 'stop', 'event', 'gender', 'type.of.feed.0')
 
-surv_ome_long$stop = ifelse(surv_ome_long$stop == 'tymp_6', '6',
-                        ifelse(surv_ome_long$stop == 'tymp_12', '12', 
-                               ifelse(surv_ome_long$stop == 'tymp_18', '18', NA)))
+ome_df_long$stop = ifelse(ome_df_long$stop == 'tymp_6', '6',
+                        ifelse(ome_df_long$stop == 'tymp_12', '12', 
+                               ifelse(ome_df_long$stop == 'tymp_18', '18', NA)))
 
-surv_ome_long$start = ifelse(surv_ome_long$stop == '6', '0',
-                         ifelse(surv_ome_long$stop == '12', '6', 
-                                ifelse(surv_ome_long$stop == '18', '12', NA)))
+ome_df_long$start = ifelse(ome_df_long$stop == '6', '0',
+                         ifelse(ome_df_long$stop == '12', '6', 
+                                ifelse(ome_df_long$stop == '18', '12', NA)))
 
 # now set 0 to NA
-surv_ome_long$event = ifelse(surv_ome_long$event == 0, NA, surv_ome_long$event)
+ome_df_long$event = ifelse(ome_df_long$event == 0, NA, ome_df_long$event)
 
 # then 2 to 0 (0 is censored)
-surv_ome_long$event = ifelse(surv_ome_long$event == 2, 0, surv_ome_long$event)
+ome_df_long$event = ifelse(ome_df_long$event == 2, 0, ome_df_long$event)
 
 # then na.rm
-surv_ome_long = surv_ome_long[complete.cases(surv_ome_long$event),]
+ome_df_long = ome_df_long[complete.cases(ome_df_long$event),]
+
+
 
 # 2 AOM model
+# need to recreate df because some vars will be different than ome df - different time varying variables
+
 surv_aom = select(followed_up, c(id, num_om_0_to_1, num_om_1_to_2, gender, type.of.feed.0))
 # only include infants followed up
 surv_aom <- surv_aom[!(is.na(surv_aom$num_om_0_to_1)) | !(is.na(surv_aom$num_om_1_to_2)),]
