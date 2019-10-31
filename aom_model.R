@@ -1,8 +1,7 @@
 # AOM survival model
-# OME survival model
 load('om_data.Rda')
 
-aom_df = select(followed_up, id, num_om_0_to_1, num_om_1_to_2, tymp_18, wai_pred_neonate, gender, type.of.birth, birth.weight, 
+aom_df = select(followed_up, id, num_om_0_to_1, num_om_1_to_2, wai_pred_neonate, gender, type.of.birth, birth.weight, 
                 body.length,head.circum)
 
 aom_df$parent_smoke = ifelse(followed_up$mum_smoke_q24 %in% c('yes', 'Yes') | followed_up$dad_smoke_q24 %in% c('yes', 'Yes')
@@ -121,48 +120,93 @@ aom_df$dad_edu = ifelse(aom_df$dad_edu %in% c('high school', 'High school', 'Hig
                                ifelse(aom_df$dad_edu %in% c('vocational', "Vocational"), 'Vocational', NA)))
 summary(as.factor(aom_df$dad_edu))
 
-
-
-# need to recreate df because some vars will be different than ome df - different time varying variables
-
-surv_aom = select(followed_up, c(id, num_om_0_to_1, num_om_1_to_2, gender, type.of.feed.0))
 # only include infants followed up
-surv_aom <- surv_aom[!(is.na(surv_aom$num_om_0_to_1)) | !(is.na(surv_aom$num_om_1_to_2)),]
-colnames(surv_aom) = c('id', 'year_1', 'year_2', 'gender', 'type.of.feed.0')
+aom_df <- aom_df[!(is.na(aom_df$num_om_0_to_1)) | !(is.na(aom_df$num_om_1_to_2)), ]
+
+aom_df = rename(aom_df, year_1 = num_om_0_to_1, year_2 = num_om_1_to_2)
 
 # set censoring to 'c', then 0 to na, then c to 0
 # if 24mth not missing, and 12 is missing, 12 is censored
-surv_aom$year_1 = ifelse(!is.na(surv_aom$year_2) & is.na(surv_aom$year_1), 'c', surv_aom$year_1)
+aom_df$year_1 = ifelse(!is.na(aom_df$year_2) & is.na(aom_df$year_1), 'c', aom_df$year_1)
 # if both normal, 24 is censored
-surv_aom$year_2 = ifelse(surv_aom$year_1==0 & surv_aom$year_2==0, 'c', surv_aom$year_2)
+aom_df$year_2 = ifelse(aom_df$year_1==0 & aom_df$year_2==0, 'c', aom_df$year_2)
 # if both missing, 12 is censored
-surv_aom$year_1 = ifelse(is.na(surv_aom$year_1) & is.na(surv_aom$year_2), 'c', surv_aom$year_1)
+aom_df$year_1 = ifelse(is.na(aom_df$year_1) & is.na(aom_df$year_2), 'c', aom_df$year_1)
 # if 12mth is normal and 24mth missing, 12 mth is censored
-surv_aom$year_1 = ifelse(is.na(surv_aom$year_2) & !is.na(surv_aom$year_1), 'c', surv_aom$year_1)
+aom_df$year_1 = ifelse(is.na(aom_df$year_2) & !is.na(aom_df$year_1), 'c', aom_df$year_1)
 # if 24mth is normal, is censored
-surv_aom$year_2 = ifelse(surv_aom$year_2==0, 'c', surv_aom$year_2)
+aom_df$year_2 = ifelse(aom_df$year_2==0, 'c', aom_df$year_2)
 
-surv_aom_long = pivot_longer(surv_aom, cols = starts_with('year'))
-surv_aom_long$start=0
+aom_df_long = pivot_longer(aom_df, cols = starts_with('year'))
+aom_df_long$start=0
 
-surv_aom_long = select(surv_aom_long, c(id, start, name, value, gender, type.of.feed.0))
-colnames(surv_aom_long) = c('id', 'start', 'stop', 'event', 'gender', 'type.of.feed.0')
-surv_aom_long$num_infect = surv_aom_long$event
-surv_aom_long$num_infect = ifelse(surv_aom_long$num_infect=='c', 0, surv_aom_long$num_infect) # will need to impute missing
+aom_df_long = rename(aom_df_long, stop=name, event=value)
+
+aom_df_long = select(aom_df_long, c(id, start, stop, event, everything()))
+aom_df_long$num_infect = aom_df_long$event
+aom_df_long$num_infect = ifelse(aom_df_long$num_infect=='c', 0, aom_df_long$num_infect) # will need to impute missing
 
 # now set >0 to 1, 0=NA, c=0 
 # then remove NA rows (no event or censoring)
-surv_aom_long$event = ifelse(surv_aom_long$event==0, NA, 
-                             ifelse(surv_aom_long$event =='c', 0,
-                                    ifelse(surv_aom_long$event >0, 1, NA)))
+aom_df_long$event = ifelse(aom_df_long$event==0, NA, 
+                             ifelse(aom_df_long$event =='c', 0,
+                                    ifelse(aom_df_long$event >0, 1, NA)))
 
-surv_aom_long$stop = ifelse(surv_aom_long$stop=='year_1', '12',
-                            ifelse(surv_aom_long$stop=='year_2', '24', NA))
+aom_df_long$stop = ifelse(aom_df_long$stop=='year_1', '12',
+                            ifelse(aom_df_long$stop=='year_2', '24', NA))
 
-surv_aom_long$start = ifelse(surv_aom_long$stop == '12', '0',
-                             ifelse(surv_aom_long$stop=='24', '12', NA))
+aom_df_long$start = ifelse(aom_df_long$stop == '12', '0',
+                             ifelse(aom_df_long$stop=='24', '12', NA))
 
-surv_aom_long = surv_aom_long[complete.cases(surv_aom_long$event), ]
-surv_aom_long$event = as.numeric(surv_aom_long$event)
+aom_df_long = aom_df_long[complete.cases(aom_df_long$event), ]
+aom_df_long$event = as.numeric(aom_df_long$event)
+aom_df_long$start = as.numeric(aom_df_long$start)
+aom_df_long$stop = as.numeric(aom_df_long$stop)
+aom_df_long$type.of.birth = as.factor(aom_df_long$type.of.birth)
+aom_df_long$birth.weight = aom_df_long$birth.weight / 1000
+aom_df_long$fam_hx_om = as.factor(aom_df_long$fam_hx_om)
+aom_df_long$mum_edu = factor(aom_df_long$mum_edu, levels = c('High school', 'Vocational', 'Tertiary'), ordered = T)
+aom_df_long$dad_edu = factor(aom_df_long$dad_edu, levels = c('High school', 'Vocational', 'Tertiary'), ordered = T)
+
+# now set time varying vars - feed, urti, dummy
+aom_df_long$feed = ifelse(aom_df_long$stop==12, aom_df_long$feed_12,
+                          ifelse(aom_df_long$stop==24, aom_df_long$feed_24, NA))
+
+aom_df_long$num_urti = ifelse(aom_df_long$stop==12, aom_df_long$num_urti_12,
+                          ifelse(aom_df_long$stop==24, aom_df_long$num_urti_24, NA))
+
+aom_df_long$dummy = ifelse(aom_df_long$stop==12, aom_df_long$dummy_12,
+                           ifelse(aom_df_long$stop==24, aom_df_long$dummy_24, NA))
+
+aom_df_long = select(aom_df_long, -c(feed_12, feed_24, num_urti_12, num_urti_24, dummy_12, dummy_24))
+
+aom_df_long$feed = as.factor(aom_df_long$feed)
+aom_df_long$num_urti = as.factor(aom_df_long$num_urti)
+aom_df_long$dummy = as.factor(aom_df_long$dummy)
+aom_df_long$num_urti = as.numeric(aom_df_long$num_urti)
+aom_df_long$dummy = ifelse(aom_df_long$dummy %in% c('yes', "Yes",'Ywa'), "Yes",
+                           ifelse(aom_df_long$dummy %in% c('no', 'No', 'Noq'), 'No', NA))
+aom_df_long$num_infect = as.numeric(aom_df_long$num_infect)
+
+# impute missing
+imputed = mice(aom_df_long, m=1)
+
+aom_df_imp <- complete(imputed)
+sapply(aom_df_long, function(x) sum(is.na(x)))
+sapply(aom_df_imp, function(x) sum(is.na(x)))
+
+# fit model
+# make income just low or not
+aom_df_imp$low_income = ifelse(aom_df_imp$income %in% '<50', 'Yes', "No")
+
+y = Surv(time = aom_df_imp$start, time2 = aom_df_imp$stop, event = aom_df_imp$event)
+
+aom_f = coxph(y ~ wai_pred_neonate + gender + type.of.birth + parent_smoke + feed_birth + dummy_birth + start_daycare + daycare_num_kids + 
+                daycare_num_days + num_ppl_home + num_sibs + num_sibs_under5 + income + fam_hx_om + mum_edu + dad_edu + age_first_om + 
+                num_infect + feed + num_urti + dummy + cluster(id), data = aom_df_imp) 
+# cluster(id) in the model formula requests robust standard errors for the parameter estimates (survival analysis book p. 661)
+
+summary(aom_f)
+
 
 
