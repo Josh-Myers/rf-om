@@ -63,7 +63,7 @@ ome_df$start_daycare = ifelse(!is.na(followed_up$age_start_care_q12), followed_u
 
 ome_df$daycare_num_kids = ifelse(!is.na(followed_up$num_kids_in_group_q12), followed_up$num_kids_in_group_q12,
                                  ifelse(!is.na(followed_up$num_kids_in_group_q24), followed_up$num_kids_in_group_q24,
-                                        ifelse(followed_up$daycare %in% 'No', 0, NA))) # will need to impute some of these
+                                        ifelse(followed_up$daycare %in% 'No', 0, NA))) 
 
 ome_df$daycare_num_days = ifelse(!is.na(followed_up$num_days_per_week_q12), followed_up$num_days_per_week_q12,
                                  ifelse(!is.na(followed_up$num_days_per_week_q24), followed_up$num_days_per_week_q24,
@@ -93,8 +93,17 @@ ome_df$dad_edu = ifelse(!is.na(followed_up$dad_edu_q12), followed_up$dad_edu_q12
                         ifelse(!is.na(followed_up$dad_edu_q24), followed_up$dad_edu_q24, NA))
 
 ome_df$age_first_om = ifelse(!is.na(followed_up$age_first_om_q12), followed_up$age_first_om_q12,
-                             ifelse(!is.na(followed_up$age_first_om_q24), followed_up$age_first_om_q24, NA))
+                             ifelse(!is.na(followed_up$age_first_om_q24), followed_up$age_first_om_q24, 
+                                    ifelse(!is.na(followed_up$num_om_0_to_1), '<12',
+                                           ifelse(!is.na(followed_up$num.of.ear.infections.since.turning.1.18mth), '<12',
+                                                  ifelse(!is.na(followed_up$num_om_1_to_2), '<24', NA)))))
 
+ome_df$age_first_om = ifelse(ome_df$age_first_om %in% c('0', '1', '1.5', '2', '3'), '0-3 months', 
+                             ifelse(ome_df$age_first_om %in% c('4', '5', '6'), '4-6 months',
+                                    ifelse(ome_df$age_first_om %in% c('7', '8', '9', '10', '11', '12', '<12'), '7-12 months',
+                                           ifelse(ome_df$age_first_om %in% c('13', '14', '16', '18', '20', '22', '23', '24', '25', '<24'), 
+                                                  '13-24 months', NA))))
+ome_df$age_first_om = factor(ome_df$age_first_om, levels = c('0-3 months', '4-6 months', '7-12 months', '13-24 months'), ordered=T)
 summary(ome_df)
 
 # clean variables and put in correct format
@@ -122,24 +131,29 @@ ome_df$dad_edu = ifelse(ome_df$dad_edu %in% c('high school', 'High school', 'Hig
                         ifelse(ome_df$dad_edu %in% c('tertiary', 'Tertiary'), 'Tertiary',
                                ifelse(ome_df$dad_edu %in% c('vocational', "Vocational"), 'Vocational', NA)))
 summary(as.factor(ome_df$dad_edu))
-# # length of breast feeding (make time varying instead)
-# model_df$length_breast = ifelse(followed_up$type.of.feed.18 %in% c('both', 'breast', 'Breast', "breast & cow's milk"), '>18',
-#                                 ifelse(followed_up$type.of.feed.12 %in% c('both', 'Both', 'breast', "Breast"), ">12", 
-#                                        ifelse(followed_up$type.of.feed.6 %in% c('both', 'Both', 'mixed'), '>6',
-#                                               ifelse(followed_up$type.of.feed.0 %in% c('B', 'both', 'Both', 'breast', 'Breast'), '>0',
-#                                                      NA) )))
-# 
-# # or age formula introduced
-# model_df$formula_intro = ifelse(!is.na(followed_up$age_formula_start_q12), followed_up$age_formula_start_q12,
-#                                 ifelse(!is.na(followed_up$age_formula_start_q24), followed_up$age_formula_start_q24,
-#                                        ifelse(followed_up$type.of.feed.0 %in% c('both', 'Both', 'formula', "Formula"), 'birth',
-#                                               ifelse(followed_up$type.of.feed.6 %in% c('both', 'Both', 'bottle', 'formula', 'mixed'), '<6',
-#                                                      ifelse(followed_up$type.of.feed.12 %in% c('both', 'Both', 'formula', 'Formula', 'mixed'), '<12',
-#                                                             ifelse(followed_up$type.of.feed.18 %in% c('both', 'formula', 'Formula', 'mixed'), '<18',
-#                                                                    'breast')))))) # all with no formla info had breast info, therfore, likely to be exclusively breastfed
 
 # only include infants followed up
 ome_df <- ome_df[!(is.na(ome_df$tymp_6)) | !(is.na(ome_df$tymp_12)) | !(is.na(ome_df$tymp_18)),]
+ome_df = select(ome_df, -c(birth.weight, body.length, head.circum))
+
+# correct data types
+ome_df$gender = ifelse(ome_df$gender %in% c('m', 'M'), 'M',
+                            ifelse(ome_df$gender %in% 'F', 'F', NA))
+ome_df$gender = as.factor(ome_df$gender)
+ome_df$type.of.birth = as.factor(ome_df$type.of.birth)
+ome_df$fam_hx_om = as.factor(ome_df$fam_hx_om)
+ome_df$mum_edu = factor(ome_df$mum_edu, levels = c('High school', 'Vocational', 'Tertiary'), ordered = T)
+ome_df$dad_edu = factor(ome_df$dad_edu, levels = c('High school', 'Vocational', 'Tertiary'), ordered = T)
+ome_df$dummy_birth = as.factor(ome_df$dummy_birth)
+ome_df$feed_6 = as.factor(ome_df$feed_6)
+ome_df$feed_12 = as.factor(ome_df$feed_12)
+ome_df$feed_18 = as.factor(ome_df$feed_18)
+ome_df$urti_6 = as.factor(ome_df$urti_6)
+ome_df$urti_12 = as.factor(ome_df$urti_12)
+ome_df$urti_18 = as.factor(ome_df$urti_18)
+ome_df$dummy_6 = as.factor(ome_df$dummy_6)
+ome_df$dummy_12 = as.factor(ome_df$dummy_12)
+ome_df$dummy_18 = as.factor(ome_df$dummy_18)
 
 # these data are interval censored https://www.r-project.org/conferences/useR-2010/tutorials/Fay_1.pdf
 # Need to have 2 models because different intervals
@@ -194,55 +208,56 @@ ome_df_long$event = ifelse(ome_df_long$event == 2, 0, ome_df_long$event)
 ome_df_long = ome_df_long[complete.cases(ome_df_long$event),]
 
 # now set time varying vars - feed, urti, dummy
-ome_df_long$feed = ifelse(ome_df_long$stop=='6', ome_df_long$feed_6,
-                          ifelse(ome_df_long$stop=='12', ome_df_long$feed_12,
-                                 ifelse(ome_df_long$stop=='18', ome_df_long$feed_18, NA)))
+ome_df_long$feed = ifelse(ome_df_long$stop=='6', as.character(ome_df_long$feed_6),
+                          ifelse(ome_df_long$stop=='12', as.character(ome_df_long$feed_12),
+                                 ifelse(ome_df_long$stop=='18', as.character(ome_df_long$feed_18), NA)))
 
-ome_df_long$urti = ifelse(ome_df_long$stop=='6', ome_df_long$urti_6,
-                          ifelse(ome_df_long$stop=='12', ome_df_long$urti_12,
-                                 ifelse(ome_df_long$stop=='18', ome_df_long$urti_18, NA)))
+ome_df_long$urti = ifelse(ome_df_long$stop=='6', as.character(ome_df_long$urti_6),
+                          ifelse(ome_df_long$stop=='12', as.character(ome_df_long$urti_12),
+                                 ifelse(ome_df_long$stop=='18', as.character(ome_df_long$urti_18), NA)))
 
-ome_df_long$dummy = ifelse(ome_df_long$stop=='6', ome_df_long$dummy_6,
-                           ifelse(ome_df_long$stop=='12', ome_df_long$dummy_12,
-                                  ifelse(ome_df_long=='18', ome_df_long$dummy_18, NA)))
+ome_df_long$dummy = ifelse(ome_df_long$stop=='6', as.character(ome_df_long$dummy_6),
+                           ifelse(ome_df_long$stop=='12', as.character(ome_df_long$dummy_12),
+                                  ifelse(ome_df_long=='18', as.character(ome_df_long$dummy_18), NA)))
 
 ome_df_long = select(ome_df_long, -c(feed_6, feed_12, feed_18, urti_6, urti_12, urti_18, dummy_6, dummy_12, dummy_18))
 
 ome_df_long$start = as.numeric(ome_df_long$start)
 ome_df_long$stop = as.numeric(ome_df_long$stop)
-ome_df_long$type.of.birth = as.factor(ome_df_long$type.of.birth)
-ome_df_long$birth.weight = ome_df_long$birth.weight / 1000
-ome_df_long$fam_hx_om = as.factor(ome_df_long$fam_hx_om)
-ome_df_long$mum_edu = factor(ome_df_long$mum_edu, levels = c('High school', 'Vocational', 'Tertiary'), ordered = T)
-ome_df_long$dad_edu = factor(ome_df_long$dad_edu, levels = c('High school', 'Vocational', 'Tertiary'), ordered = T)
 ome_df_long$feed = as.factor(ome_df_long$feed)
 ome_df_long$urti = as.factor(ome_df_long$urti)
 ome_df_long$dummy = as.factor(ome_df_long$dummy)
-ome_df_long$gender = ifelse(ome_df_long$gender %in% c('m', 'M'), 'M',
-                            ifelse(ome_df_long$gender %in% 'F', 'F', NA))
-ome_df_long$gender = as.factor(ome_df_long$gender)
+
+# impute NA
+ome_na = ome_df_long %>% 
+  select(everything()) %>% 
+  summarise_all(funs(sum(is.na(.))))
+
+ome_na / 545
 
 # impute missing
 imputed = mice(ome_df_long, m=1)
-
 ome_df_imp <- complete(imputed)
 sapply(ome_df_long, function(x) sum(is.na(x)))
 sapply(ome_df_imp, function(x) sum(is.na(x)))
 
 # fit model
-
 # make income just low or not
-ome_df_imp$low_income = ifelse(ome_df_imp$income %in% '<50', 'Yes', "No")
+#ome_df_imp$low_income = ifelse(ome_df_imp$income %in% '<50', 'Yes', "No")
 
 y = Surv(time = ome_df_imp$start, time2 = ome_df_imp$stop, event = ome_df_imp$event)
 
-ome_f = coxph(y ~ wai_pred_neonate + gender + type.of.birth + birth.weight + body.length + head.circum + parent_smoke + feed_birth + 
-                dummy_birth + start_daycare + daycare_num_kids + daycare_num_days + num_ppl_home + num_sibs + num_sibs_under5 + low_income + 
-                fam_hx_om + mum_edu + dad_edu + age_first_om + feed + urti + dummy + cluster(id), data = ome_df_imp) 
+ome_f = coxph(y ~ wai_pred_neonate + gender + type.of.birth + parent_smoke + feed_birth + dummy_birth + start_daycare + daycare_num_kids + 
+                daycare_num_days + num_ppl_home + num_sibs + num_sibs_under5 + income + fam_hx_om + mum_edu + dad_edu + age_first_om + 
+                feed + urti + dummy + cluster(id), data = ome_df_imp) 
 # cluster(id) in the model formula requests robust standard errors for the parameter estimates (survival analysis book p. 661)
 
 summary(ome_f)
 
+# now need to make sure I have done the time varying variables correctly
+# and check goodness of fit - cox assumptions etc
+# it would be cool to plot the effects of significant variables - like can do with rms
+# also need to better impute variables - can choose vars to impute with etc
 
 
 

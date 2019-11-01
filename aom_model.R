@@ -89,7 +89,18 @@ aom_df$dad_edu = ifelse(!is.na(followed_up$dad_edu_q12), followed_up$dad_edu_q12
                         ifelse(!is.na(followed_up$dad_edu_q24), followed_up$dad_edu_q24, NA))
 
 aom_df$age_first_om = ifelse(!is.na(followed_up$age_first_om_q12), followed_up$age_first_om_q12,
-                             ifelse(!is.na(followed_up$age_first_om_q24), followed_up$age_first_om_q24, NA))
+                             ifelse(!is.na(followed_up$age_first_om_q24), followed_up$age_first_om_q24, 
+                                    ifelse(!is.na(followed_up$num_om_0_to_1), '<12',
+                                           ifelse(!is.na(followed_up$num.of.ear.infections.since.turning.1.18mth), '<12',
+                                                  ifelse(!is.na(followed_up$num_om_1_to_2), '<24', NA)))))
+
+aom_df$age_first_om = ifelse(aom_df$age_first_om %in% c('0', '1', '1.5', '2', '3'), '0-3 months', 
+                             ifelse(aom_df$age_first_om %in% c('4', '5', '6'), '4-6 months',
+                                    ifelse(aom_df$age_first_om %in% c('7', '8', '9', '10', '11', '12', '<12'), '7-12 months',
+                                           ifelse(aom_df$age_first_om %in% c('13', '14', '16', '18', '20', '22', '23', '24', '25', '<24'), 
+                                                  '13-24 months', NA))))
+aom_df$age_first_om = factor(aom_df$age_first_om, levels = c('0-3 months', '4-6 months', '7-12 months', '13-24 months'), ordered=T)
+
 summary(aom_df)
 
 # clean variables and put in correct format
@@ -168,6 +179,7 @@ aom_df_long$fam_hx_om = as.factor(aom_df_long$fam_hx_om)
 aom_df_long$mum_edu = factor(aom_df_long$mum_edu, levels = c('High school', 'Vocational', 'Tertiary'), ordered = T)
 aom_df_long$dad_edu = factor(aom_df_long$dad_edu, levels = c('High school', 'Vocational', 'Tertiary'), ordered = T)
 
+
 # now set time varying vars - feed, urti, dummy
 aom_df_long$feed = ifelse(aom_df_long$stop==12, aom_df_long$feed_12,
                           ifelse(aom_df_long$stop==24, aom_df_long$feed_24, NA))
@@ -187,6 +199,7 @@ aom_df_long$num_urti = as.numeric(aom_df_long$num_urti)
 aom_df_long$dummy = ifelse(aom_df_long$dummy %in% c('yes', "Yes",'Ywa'), "Yes",
                            ifelse(aom_df_long$dummy %in% c('no', 'No', 'Noq'), 'No', NA))
 aom_df_long$num_infect = as.numeric(aom_df_long$num_infect)
+aom_df_long$dummy = as.factor(aom_df_long$dummy)
 
 # impute missing
 imputed = mice(aom_df_long, m=1)
@@ -196,9 +209,6 @@ sapply(aom_df_long, function(x) sum(is.na(x)))
 sapply(aom_df_imp, function(x) sum(is.na(x)))
 
 # fit model
-# make income just low or not
-aom_df_imp$low_income = ifelse(aom_df_imp$income %in% '<50', 'Yes', "No")
-
 y = Surv(time = aom_df_imp$start, time2 = aom_df_imp$stop, event = aom_df_imp$event)
 
 aom_f = coxph(y ~ wai_pred_neonate + gender + type.of.birth + parent_smoke + feed_birth + dummy_birth + start_daycare + daycare_num_kids + 
