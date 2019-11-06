@@ -1,4 +1,8 @@
 # AOM survival model
+library(tidyverse)
+library(survival)
+library(mice)
+
 load('om_data.Rda')
 
 aom_df = select(followed_up, id, num_om_0_to_1, num_om_1_to_2, wai_pred_neonate, gender, type.of.birth, birth.weight, 
@@ -72,7 +76,9 @@ aom_df$num_sibs = ifelse(!is.na(followed_up$num_siblings_at_home_q12), followed_
                          ifelse(!is.na(followed_up$num_siblings_at_home_q24), followed_up$num_siblings_at_home_q24, NA))
 
 aom_df$num_sibs_under5 = ifelse(!is.na(followed_up$num_sibs_under_5_q12), followed_up$num_sibs_under_5_q12,
-                                ifelse(!is.na(followed_up$num_sibs_under_5_q24), followed_up$num_sibs_under_5_q24, NA))
+                                ifelse(!is.na(followed_up$num_sibs_under_5_q24), followed_up$num_sibs_under_5_q24, 
+                                       ifelse(followed_up$num_siblings_at_home_q12 == 0, 0,
+                                              ifelse(followed_up$num_siblings_at_home_q24 == 0, 0, NA))))
 
 aom_df$income = ifelse(!is.na(followed_up$income_q12), followed_up$income_q12,
                        ifelse(!is.na(followed_up$income_q24), followed_up$income_q24, NA))

@@ -30,7 +30,12 @@ ome_df$feed_12 = ifelse(followed_up$type.of.feed.12 %in% c('breast', 'Breast'), 
 ome_df$feed_18 = ifelse(followed_up$type.of.feed.18 %in% c('breast', "Breast"), 'Breast',
                         ifelse(followed_up$type.of.feed.18 %in% c('formula', 'Formula'), 'Formula',
                                ifelse(followed_up$type.of.feed.18 %in% c('both', "breast & cow's milk", 'cow', "Cow's milk", 'mixed',
-                                                                         'Na', 'nil', 'other', 'Solid'), 'Mixed/Other', NA)))
+                                                                         'Na', 'nil', 'other', 'Solid'), 'Mixed/Other',
+                                      ifelse(followed_up$feed_q24 %in% c('breast', 'Breast', 'Breast fed'), 'Breast',
+                                             ifelse(followed_up$feed_q24 %in% c('formula', 'Formula'), 'Formula',
+                                                    ifelse(followed_up$feed_q24 %in% c('Both', 'Breast and Formula', 'cow', "Cow's",
+                                                                                       "cow's milk", 'mixed', 'Neither', 'Niether',
+                                                                                       'none', 'None', 'Other'), 'Mixed/Other', NA))))))
 
 ome_df$urti_6 = ifelse(followed_up$cold.or.flu.6 %in% c('yes', "Yes"), "Yes",
                        ifelse(followed_up$cold.or.flu.6 %in% c('Na', 'no', 'No'), 'No', NA))
@@ -48,7 +53,9 @@ ome_df$dummy_12 = ifelse(followed_up$using.pacifier.12 %in% c('Yes', 'yes'), "Ye
                          ifelse(followed_up$using.pacifier.12 %in% c('no', "No"), 'No', NA))
 
 ome_df$dummy_18 = ifelse(followed_up$using.pacifier.18 %in% c('yes', 'Yes'), "Yes",
-                         ifelse(followed_up$using.pacifier.18 %in% c('Na', 'no', "No"), 'No', NA))
+                         ifelse(followed_up$using.pacifier.18 %in% c('Na', 'no', "No"), 'No',
+                                ifelse(followed_up$use_dummy_q24 %in% c('yes', 'Yes'), 'Yes',
+                                       ifelse(followed_up$use_dummy_q24 %in% c('no', "No", "Noq"), 'No', NA))))
 
 # daycare
 # create daycare yes/no to use in start daycare (months) variable 
@@ -76,7 +83,9 @@ ome_df$num_sibs = ifelse(!is.na(followed_up$num_siblings_at_home_q12), followed_
                          ifelse(!is.na(followed_up$num_siblings_at_home_q24), followed_up$num_siblings_at_home_q24, NA))
 
 ome_df$num_sibs_under5 = ifelse(!is.na(followed_up$num_sibs_under_5_q12), followed_up$num_sibs_under_5_q12,
-                                ifelse(!is.na(followed_up$num_sibs_under_5_q24), followed_up$num_sibs_under_5_q24, NA))
+                                ifelse(!is.na(followed_up$num_sibs_under_5_q24), followed_up$num_sibs_under_5_q24,
+                                       ifelse(followed_up$num_siblings_at_home_q12 == 0, 0,
+                                              ifelse(followed_up$num_siblings_at_home_q24 == 0, 0, NA))))
 
 ome_df$income = ifelse(!is.na(followed_up$income_q12), followed_up$income_q12,
                        ifelse(!is.na(followed_up$income_q24), followed_up$income_q24, NA))
@@ -154,6 +163,14 @@ ome_df$urti_18 = as.factor(ome_df$urti_18)
 ome_df$dummy_6 = as.factor(ome_df$dummy_6)
 ome_df$dummy_12 = as.factor(ome_df$dummy_12)
 ome_df$dummy_18 = as.factor(ome_df$dummy_18)
+
+# na
+ome_na = ome_df %>% 
+  select(everything()) %>% 
+  summarise_all(funs(sum(is.na(.))))
+ome_na
+ome_na / 370
+
 
 # these data are interval censored https://www.r-project.org/conferences/useR-2010/tutorials/Fay_1.pdf
 # Need to have 2 models because different intervals
@@ -244,7 +261,6 @@ sapply(ome_df_imp, function(x) sum(is.na(x)))
 # fit model
 # make income just low or not
 #ome_df_imp$low_income = ifelse(ome_df_imp$income %in% '<50', 'Yes', "No")
-
 y = Surv(time = ome_df_imp$start, time2 = ome_df_imp$stop, event = ome_df_imp$event)
 
 ome_f = coxph(y ~ wai_pred_neonate + gender + type.of.birth + parent_smoke + feed_birth + dummy_birth + start_daycare + daycare_num_kids + 
