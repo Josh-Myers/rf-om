@@ -2,7 +2,7 @@
 library(mice)
 library(jtools)
 library(sandwich)
-library(lmtest)
+#library(lmtest)
 library(car)
 library(tidyverse)
 
@@ -11,6 +11,78 @@ load('om_data.Rda')
 
 aom_df = dplyr::select(followed_up, id, num_om_0_to_1, num_om_1_to_2, wai_pred_neonate, gender, type.of.birth, birth.weight, 
                 body.length,head.circum)
+
+# do exclusive breast, formula (y/n), length of breast
+# aom_df$exl_breast_birth = ifelse(followed_up$type.of.feed.0 %in% c('breast', 'Breast'), "Yes",
+#                                  ifelse(followed_up$type.of.feed.0 %in% c('B', 'both', 'Both', 'formula', 'Formula'), 'No', NA))
+# aom_df$exl_breast_birth = as.factor(aom_df$exl_breast_birth)
+# 
+# aom_df$form_birth = ifelse(followed_up$type.of.feed.0 %in% c('formula', 'Formula', 'B', 'Both', 'both'), 'Yes',
+#                            ifelse(followed_up$type.of.feed.0 %in% c('breast', 'Breast'), 'No', NA))
+# aom_df$form_birth = as.factor(aom_df$form_birth)
+# 
+# aom_df$breast_start = ifelse(!is.na(followed_up$age_breast_start_q12), followed_up$age_breast_start_q12,
+#                              ifelse(followed_up$type.of.feed.0 %in% c('breast', 'Breast', 'B', 'both', 'Both'), '0',
+#                                     ifelse(!is.na(followed_up$age_breast_start_q24), followed_up$age_breast_start_q24, NA)))
+# aom_df$breast_start = as.numeric(aom_df$breast_start)
+# 
+# aom_df$breast_stop = ifelse(!is.na(followed_up$age_breast_stop_q12), followed_up$age_breast_stop_q12,
+#                             ifelse(!is.na(followed_up$age_breast_stop_q24), followed_up$age_breast_stop_q24,
+#                                    ifelse(followed_up$type.of.feed.12 %in% c('both', 'Both', 'breast', 'Breast', 'mixed'), '12',
+#                                           ifelse(followed_up$feed_q12 %in% c('both', 'Both', 'breast', 'Breast', 'mixed'), '12',
+#                                                  ifelse(followed_up$feed_q24 %in% c('both', 'Breast', 'breast', 'Breast fed'), '12',
+#                                                         ifelse(followed_up$type.of.feed.6 %in% c('both', 'Both', 'breast', 'Breast, mixed'),
+#                                                                '6',
+#                                                                ifelse(followed_up$type.of.feed.18 %in% c('both', "breast', 
+#                                                                                                          'Breast', 'breast & cow's milk",
+#                                                                                                          'mixed'), '12', NA)))))))
+# aom_df$breast_stop = as.numeric(aom_df$breast_stop)
+# aom_df$length_breast = aom_df$breast_stop - aom_df$breast_start
+
+# only 3 had asthma
+# only 2 had hayfever
+# only 5 sinus
+aom_df$allergy = ifelse(followed_up$allergies_q12 %in% c('beef', 'yes', "Yes"), "Yes",
+                          ifelse(followed_up$allergies_q24 %in% c('yes', "Yes"), "Yes",
+                                 ifelse(followed_up$allergies_q12 %in% c('no', "No"), 'No',
+                                        ifelse(followed_up$allergies_q24 %in% c('no', 'nO', 'No'), 'No', NA))))
+aom_df$allergy = as.factor(aom_df$allergies)
+
+aom_df$reflux = ifelse(followed_up$reflux_q12 %in% c('yes', "Yes"), "Yes",
+                          ifelse(followed_up$reflux_q24 %in% c('yes', "Yes"), "Yes",
+                                 ifelse(followed_up$reflux_q12 %in% c('no', "No"), 'No',
+                                        ifelse(followed_up$reflux_q24 %in% c('no', 'No'), 'No', NA))))
+aom_df$reflux = as.factor(aom_df$reflux)
+
+aom_df$other_illness = ifelse(followed_up$other_illness_q12 %in% c('yes', "Yes"), "Yes",
+                       ifelse(followed_up$other_illness_q24 %in% c('yes', "Yes"), "Yes",
+                              ifelse(followed_up$other_illness_q12 %in% c('no', "No"), 'No',
+                                     ifelse(followed_up$other_illness_q24 %in% c('no', 'No'), 'No', NA))))
+aom_df$other_illness = as.factor(aom_df$other_illness)
+
+aom_df$snore = ifelse(followed_up$snore_q12 %in% c('yes', "Yes", 'sometimes'), "Yes",
+                              ifelse(followed_up$snore_q24 %in% c('yes', "Yes"), "Yes",
+                                     ifelse(followed_up$snore_q12 %in% c('no', "No"), 'No',
+                                            ifelse(followed_up$snore_q24 %in% c('no', 'No'), 'No', NA))))
+aom_df$snore = as.factor(aom_df$snore)
+
+aom_df$mouth_breathe = ifelse(followed_up$mouth_breathe_q12 %in% c('yes', "Yes", 'sometimes'), "Yes",
+                      ifelse(followed_up$mouth_breathe_q24 %in% c('yes', "Yes"), "Yes",
+                             ifelse(followed_up$mouth_breathe_q12 %in% c('no', "No", 'Unsure'), 'No',
+                                    ifelse(followed_up$mouth_breathe_q24 %in% c('no', 'No', 'NO'), 'No', NA))))
+aom_df$mouth_breathe = as.factor(aom_df$mouth_breathe)
+
+aom_df$swim = ifelse(followed_up$swim_q12 %in% c('yes', "Yes", 'ye'), "Yes",
+                     ifelse(followed_up$swim_q12 %in% c('no', "No", 'Unsure'), 'No',
+                              ifelse(followed_up$swim_q24 %in% c('yes', "Yes"), "Yes",
+                                            ifelse(followed_up$swim_q24 %in% c('no', 'No'), 'No', NA))))
+aom_df$swim = as.factor(aom_df$swim)
+
+aom_df$fm_hx_allergy = ifelse(followed_up$fm_hx_allergy_q12 %in% c('yes', "Yes"), "Yes",
+                              ifelse(followed_up$fm_hx_allergy_q12 %in% c('no', "No", 'n', 'NO'), 'No',
+                                     ifelse(followed_up$fm_hx_allergy_q24 %in% c("Yes", 'ye', 'yes', "Yes (Cow's milk protein)"), "Yes",
+                                            ifelse(followed_up$fm_hx_allergy_q24 %in% c('No', 'no'), 'No', NA))))
+aom_df$fm_hx_allergy = as.factor(aom_df$fm_hx_allergy)
 
 aom_df$parent_smoke = ifelse(followed_up$mum_smoke_q12 %in% c('yes', 'Yes') | followed_up$dad_smoke_q12 %in% c('yes', 'Yes')
                              | followed_up$mum_smoke_q24 %in% c('yes', 'Yes') | followed_up$dad_smoke_q24 %in% c('yes', 'Yes'),
@@ -99,6 +171,19 @@ aom_df$fam_hx_om = ifelse(!is.na(followed_up$parent_hx_om_q12), followed_up$pare
                                  ifelse(!is.na(followed_up$sib_om_hx_12), followed_up$sib_om_hx_12,
                                         ifelse(!is.na(followed_up$sib_om_hx_24), followed_up$sib_om_hx_24, NA))))
 
+aom_df$sib_grom = ifelse(followed_up$sib_grom_q12 %in% c('yes', "Yes", 'y'), "Yes",
+                         ifelse(followed_up$sib_grom_q12 %in% c('no', "No", 'noo'), 'No',
+                                ifelse(followed_up$sib_grom_q24 %in% c("Yes"), "Yes",
+                                       ifelse(followed_up$sib_grom_q24 %in% c('No'), 'No', NA))))
+aom_df$sib_grom = as.factor(aom_df$sib_grom)
+
+
+aom_df$sib_hx_om = ifelse(!is.na(followed_up$sib_om_hx_12), followed_up$sib_om_hx_12,
+                          ifelse(!is.na(followed_up$sib_om_hx_24), followed_up$sib_om_hx_24, NA))
+
+aom_df$par_hx_om = ifelse(!is.na(followed_up$parent_hx_om_q12), followed_up$parent_hx_om_q12,
+                          ifelse(!is.na(followed_up$parent_hx_om_q24), followed_up$parent_hx_om_q24, NA))
+
 aom_df$mum_edu = ifelse(!is.na(followed_up$mum_edu_q12), followed_up$mum_edu_q12,
                         ifelse(!is.na(followed_up$mum_edu_q24), followed_up$mum_edu_q24, NA))
 
@@ -138,6 +223,10 @@ aom_df$income = ifelse(aom_df$income %in% c('<50', '< 50'), "<50",
 aom_df$income = factor(aom_df$income, levels=c('<50', '50-100', '101-150', '>150'), ordered=T)
 aom_df$fam_hx_om = ifelse(aom_df$fam_hx_om %in% c('1', 'yes', 'Yes', 'Ys'), "Yes",
                           ifelse(aom_df$fam_hx_om %in% c('nno', 'no', 'No', 'NO', 'Unsure'), 'No', NA))
+aom_df$sib_hx_om = ifelse(aom_df$sib_hx_om %in% c('1', 'yes', 'Yes', 'Ys'), "Yes",
+                          ifelse(aom_df$sib_hx_om %in% c('nno', 'no', 'No', 'NO', 'Unsure'), 'No', NA))
+aom_df$par_hx_om = ifelse(aom_df$par_hx_om %in% c('1', 'yes', 'Yes', 'Ys'), "Yes",
+                          ifelse(aom_df$par_hx_om %in% c('nno', 'no', 'No', 'NO', 'Unsure'), 'No', 'No'))
 aom_df$mum_edu = ifelse(aom_df$mum_edu %in% c('high school', 'High school', 'High School'), 'High school',
                         ifelse(aom_df$mum_edu %in% c('tertiary', 'Tertiary'), 'Tertiary',
                                ifelse(aom_df$mum_edu %in% c('vocational', "Vocational"), 'Vocational', NA)))
@@ -157,6 +246,8 @@ aom_df$dummy_12 = ifelse(aom_df$dummy_12 %in% c('yes', "Yes",'Ywa'), "Yes",
 aom_df$dummy_12 = as.factor(aom_df$dummy_12)
 aom_df$feed_12 = as.factor(aom_df$feed_12)
 aom_df$start_daycare = as.factor(aom_df$start_daycare)
+aom_df$sib_hx_om = as.factor(aom_df$sib_hx_om)
+aom_df$par_hx_om = as.factor(aom_df$par_hx_om)
 
 # only include infants followed up
 aom_df <- aom_df[!(is.na(aom_df$num_om)), ]
@@ -174,7 +265,8 @@ sapply(aom_df_imp, function(x) sum(is.na(x)))
 # fit model
 aom_f = glm(num_om ~ wai_pred_neonate + gender + type.of.birth + parent_smoke + feed_birth + dummy_birth + feed_12 + num_urti_12 + 
               dummy_12 + start_daycare + daycare_num_kids + daycare_num_days + num_ppl_home + num_sibs + num_sibs_under5 + income + 
-              fam_hx_om + mum_edu + dad_edu, data = aom_df_imp, family = poisson) 
+              fam_hx_om + mum_edu, 
+            data = aom_df_imp, family = poisson) 
 
 summary(aom_f)
 # overdispersed - residual deviance > df (444.78 > 303)
@@ -182,7 +274,8 @@ summary(aom_f)
 # therefore, use quasi-poisson because of overdispersion: https://stats.stackexchange.com/questions/201903/how-to-deal-with-overdispersion-in-poisson-regression-quasi-likelihood-negativ
 aom_q = glm(num_om ~ wai_pred_neonate + gender + type.of.birth + parent_smoke + feed_birth + dummy_birth + feed_12 + num_urti_12 + 
               dummy_12 + start_daycare + daycare_num_kids + daycare_num_days + num_ppl_home + num_sibs + num_sibs_under5 + income + 
-              fam_hx_om + mum_edu + dad_edu, data = aom_df_imp, family = quasipoisson) 
+              fam_hx_om + mum_edu, 
+            data = aom_df_imp, family = quasipoisson) 
 
 #saveRDS(aom_q, 'quasimodel_aom.rds')
 summary(aom_q)

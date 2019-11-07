@@ -115,27 +115,31 @@ tymp = left_join(id, tymp)
 # need to make variables amt time breast fed, amt time formula etc
 
 quest_12 = read_xlsx("Questionnaires.xlsx", sheet=1, na=c(NA, "", "NFA", "NA"),
-                     col_types = c(n,  s,  s,  s,  s,  s,  n,  n,  t, s, s, s, s, s, t, 
-                                   n, n, t, n, n, n, s, s, t, t, n, n, n, s, s, 
-                                   s, s, s, s, n, s, s, s, s, s, n, n, t, s, n,
-                                   t, s, t, t, t, t, t, t, t, s))
+                     col_types = c(n,  s,  s,  s,  s,  s,  n,  n,  t, s, s, s, s, s, t, #15
+                                   n, n, t, n, n, n, s, s, t, t, n, n, n, t, t, #30
+                                   t, t, t, t, n, t, s, t, t, t, n, n, t, t, n,
+                                   t, t, t, t, t, t, t, t, t, s))
 
 colnames(quest_12) = c('id', 'num_om_0_to_1', 'age_first_om_q12', 'saw_gp_q12', 'use_dummy_q12', 'start_dummy_q12', 'stop_dummy_q12',
                        'feed_q12', 'age_breast_start_q12', 'age_breast_stop_q12', 'age_formula_start_q12', 'day_care_q12', 'type_care_q12', 
-                       'num_kids_in_group_q12', 'num_days_per_week_q12', 'age_start_care_q12', "num_urti_q12", 'num_people_at_home_q12', 
-                       'num_siblings_at_home_q12', 'sib_om_hx_12', "num_sibs_under_5_q12", 'parent_hx_om_q12', 'mum_edu_q12', 'dad_edu_q12', 'income_q12', 
+                       'num_kids_in_group_q12', 'num_days_per_week_q12', 'age_start_care_q12', 'asthma_q12', 'hay_fever_q12', 'allergies_q12',
+                       'sinus_q12', 'reflux_q12', 'med_cond_q12',  "num_urti_q12", 'other_illness_q12', 'snore_q12', 'mouth_breathe_q12', 
+                       'swim_q12',   'num_people_at_home_q12', 'num_siblings_at_home_q12', 'sib_om_hx_12', 'sib_grom_q12', "num_sibs_under_5_q12", 
+                       'parent_hx_om_q12', 'fm_hx_allergy_q12', 'mum_edu_q12', 'dad_edu_q12', 'income_q12', 
                        'mum_smoke_q12', 'num_cig_mum_q12', 'dad_smoke_q12', 'num_cig_dad_q12')
 
 quest_24 = read_xlsx("Questionnaires.xlsx", sheet=2, na=c(NA, "", "NFA", "NA"),
-                     col_types = c(n,  s,  s,  s,  s,  s,  n,  n,  t, s, s, s, s, s, t, 
-                                   n, n, t, n, n, n, s, s, t, t, n, n, n, s, s, 
-                                   s, s, s, s, n, s, s, s, s, s, n, n, t, s, n,
-                                   t, s, t, t, t, t, t, t, t, s, s))
+                     col_types = c(n,  s,  s,  s,  s,  s,  n,  n,  t, s, s, s, s, s, t, #15
+                                   n, n, t, n, n, n, s, s, t, t, n, n, n, t, t, #30
+                                   t, t, t, t, n, t, s, t, t, t, n, n, t, t, n,
+                                   t, t, t, t, t, t, t, t, t, s, s))
 
 colnames(quest_24) = c('id', 'num_om_1_to_2', 'age_first_om_q24', 'saw_gp_q24', 'use_dummy_q24', 'start_dummy_q24', 'stop_dummy_q24',
                        'feed_q24', 'age_breast_start_q24', 'age_breast_stop_q24', 'age_formula_start_q24', 'day_care_q24', 'type_care_q24', 
-                       'num_kids_in_group_q24', 'num_days_per_week_q24', 'age_start_care_q24', 'num_urti_q24', 'num_people_at_home_q24', 
-                       'num_siblings_at_home_q24', 'sib_om_hx_24', "num_sibs_under_5_q24", 'parent_hx_om_q24', 'mum_edu_q24', 'dad_edu_q24', 'income_q24', 
+                       'num_kids_in_group_q24', 'num_days_per_week_q24', 'age_start_care_q24', 'asthma_q24', 'hay_fever_q24', 'allergies_q24',
+                       'sinus_q24', 'reflux_q24', 'med_cond_q24',  "num_urti_q24", 'other_illness_q24', 'snore_q24', 'mouth_breathe_q24', 
+                       'swim_q24',   'num_people_at_home_q24', 'num_siblings_at_home_q24', 'sib_om_hx_12', 'sib_grom_q24', "num_sibs_under_5_q24", 
+                       'parent_hx_om_q24', 'fm_hx_allergy_q24', 'mum_edu_q24', 'dad_edu_q24', 'income_q24', 
                        'mum_smoke_q24', 'num_cig_mum_q24', 'dad_smoke_q24', 'num_cig_dad_q24')
 
 

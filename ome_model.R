@@ -1,4 +1,8 @@
 # OME survival model
+library(tidyverse)
+library(survival)
+library(mice)
+
 load('om_data.Rda')
 
 ome_df = select(followed_up, id, tymp_6, tymp_12, tymp_18, wai_pred_neonate, gender, type.of.birth, birth.weight, body.length,head.circum)
